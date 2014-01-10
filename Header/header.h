@@ -4,7 +4,7 @@
  *  Created on: Dec 31, 2013
  *      Author: acer
  */
-
+volatile int i;
 #ifndef HEADER_H_
 #define HEADER_H_
 
