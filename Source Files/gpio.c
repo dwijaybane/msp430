@@ -44,6 +44,13 @@
 #endif
 #include <msp430.h>
 
+/******************* GPIO ISR ROUTINE ****************************/
+#pragma vector=PORT1_VECTOR
+__interrupt void PORT_1 (void)
+{
+	GPIO_toggleOutputOnPin(GPIO_PORT_P5,GPIO_PIN1);
+	GPIO_clearInterruptFlag(GPIO_PORT_P1,GPIO_PIN6);
+}
 
 unsigned int GPIO_getBaseAddress(unsigned char selectedPort)
 {
