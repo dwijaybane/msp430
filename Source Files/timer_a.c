@@ -51,7 +51,19 @@ void privateTimerAProcessClockSourceDivider (unsigned int baseAddress,
 #pragma vector=TIMER0_A0_VECTOR
 __interrupt void Timer_A (void)
 {
-	TIMER_A_clearTimerInterruptFlag(__MSP430_BASEADDRESS_T0A3__);
+	if(hrt_bt_timer)
+	{
+		--hrt_bt_timer;
+	}
+	else
+	{
+		GPIO_toggleOutputOnPin(5,1);
+		hrt_bt_timer = 100;
+	}
+	if(delay_timer)
+	{
+		--delay_timer;
+	}
 }
 
 
@@ -1637,15 +1649,10 @@ void Timer_Init(unsigned int timer)
 	switch(timer)
 	{
 	case TIMER_0:
-		TIMER_A_startCounter(__MSP430_BASEADDRESS_T0A3__,TIMER_A_UP_MODE);
-		TIMER_A_configureUpMode
-			(__MSP430_BASEADDRESS_T0A3__,
-					TIMER_A_CLOCKSOURCE_SMCLK,
-					TIMER_A_CLOCKSOURCE_DIVIDER_1,20000,
-					TIMER_A_TAIE_INTERRUPT_ENABLE,
-					TIMER_A_CCIE_CCR0_INTERRUPT_ENABLE,
-					TIMER_A_SKIP_CLEAR
-			);
+		TA0CCTL0 = CCIE;
+		TA0CCR0 = 33;
+		TA0CTL = TASSEL_1 | MC_1 | TACLR; 	// ACLK, cont. mode, clear TAR
+
 		break;
 	case TIMER_1:
 		TIMER_B_startCounter(__MSP430_BASEADDRESS_T1A2__,TIMER_B_UP_MODE);
@@ -1684,19 +1691,9 @@ void Timer_Init(unsigned int timer)
 **********************************************************************/
 void Delay_Ms(unsigned int dly)
 {
-	unsigned int i;
-	dly = 1000/dly;
-	_BIS_SR(GIE);
-
-	TIMER_A_clear(__MSP430_BASEADDRESS_T0A3__);
-	TIMER_A_startUpMode(__MSP430_BASEADDRESS_T0A3__,TIMER_A_CLOCKSOURCE_SMCLK,
-						TIMER_A_CLOCKSOURCE_DIVIDER_4,20000,
-						TIMER_A_TAIE_INTERRUPT_ENABLE,TIMER_A_CCIE_CCR0_INTERRUPT_ENABLE,TIMER_A_SKIP_CLEAR
-						);
-
-	for(i = 0;i<(25/dly);i++)
+	delay_timer = dly;
+	while(delay_timer)
 	{}
-
 }
 
 /****************************************************************//**
