@@ -22,11 +22,12 @@
 void Sys_Init(void)
 {
 	WDT_A_hold(WDT_A_BASE);								// Holds the WatchDog Timer
-	UCS_clockSignalInit(UCS_BASE,UCS_MCLK,UCS_XT1CLK_SELECT,UCS_CLOCK_DIVIDER_8);	// Clock Initialization
+
+	Timer_Init(TIMER_0);								// Initialize Timers for Operation
 
 	Port_Init();										// Initialize GPIO Ports for Operation
 
-	Timer_Init(TIMER_0);										// Initialize Timers for Operation
+	 _bis_SR_register(GIE);								// Enable All the Global Interrupts
 }
 
 /***************************************************************************//**
