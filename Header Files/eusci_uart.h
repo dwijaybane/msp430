@@ -247,4 +247,6 @@ void EUSCI_UART_selectDeglitchTime(unsigned int baseAddress,
 			);
 extern void Uart_Init(UartId_e uartx,long int BAUD_RATE);
 extern void WriteDataUart(UartId_e uartx,char Data);
+extern void WriteDataStringUart(UartId_e uartx,char *String);
+extern char ReadDataUart(UartId_e uartx);
 #endif
