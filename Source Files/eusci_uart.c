@@ -924,6 +924,32 @@ void WriteDataStringUart(UartId_e uartx,char *String)
 		i++;
 	}
 }
+/**********************************************************************//**
+* @brief        		Read the single byte of Data from UART Port Selected.
+* @param[in]        	UART Module like uartA0,uartA1.
+* @return           	Character Received from UART.
+***************************************************************************/
+char ReadDataUart(UartId_e uartx)
+{
+	if(uartx==uartA0)
+	{
+		while (!EUSCI_UART_getInterruptStatus(EUSCI_A0_BASE,
+		                       EUSCI_UART_RECEIVE_INTERRUPT_FLAG)) ;
+		return(EUSCI_UART_receiveData(EUSCI_A0_BASE));
+	}
+	else if(uartx==uartA1)
+	{
+		while (!EUSCI_UART_getInterruptStatus(EUSCI_A1_BASE,
+				               EUSCI_UART_RECEIVE_INTERRUPT_FLAG)) ;
+		return(EUSCI_UART_receiveData(EUSCI_A1_BASE));
+	}
+	else
+	{
+		while (!EUSCI_UART_getInterruptStatus(EUSCI_A2_BASE,
+				               EUSCI_UART_RECEIVE_INTERRUPT_FLAG)) ;
+	    return(EUSCI_UART_receiveData(EUSCI_A2_BASE));
+	}
+}
 //*****************************************************************************
 //
 //Close the Doxygen group.
