@@ -266,5 +266,5 @@ extern unsigned long UCS_getMCLK (unsigned int baseAddress);
 extern unsigned int UCS_clearAllOscFlagsWithTimeout(unsigned int baseAddress, 
                                              unsigned int timeout);
        
-
+extern void Clock_Init();
 #endif
