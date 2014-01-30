@@ -1509,31 +1509,20 @@ unsigned int UCS_clearAllOscFlagsWithTimeout(unsigned int baseAddress,
 **********************************************************************/
 void Clock_Init()
 {
-	PMM_setVCore(PMM_BASE,
-		              PMM_CORE_LEVEL_1
-		              );
+	//Set DCO FLL reference = REFO
+	UCS_clockSignalInit(
+			  UCS_BASE,
+			  UCS_FLLREF,
+			  UCS_REFOCLK_SELECT,
+			  UCS_CLOCK_DIVIDER_1
+			  );
 
-		          //Set DCO FLL reference = REFO
-		    UCS_clockSignalInit(
-		              UCS_BASE,
-		              UCS_FLLREF,
-		              UCS_REFOCLK_SELECT,
-		              UCS_CLOCK_DIVIDER_1
-		              );
-		         //Set ACLK = REFO
-		    UCS_clockSignalInit(
-		              UCS_BASE,
-		              UCS_ACLK,
-		              UCS_REFOCLK_SELECT,
-		              UCS_CLOCK_DIVIDER_1
-		              );
-
-		        //Set Ratio and Desired MCLK Frequency  and initialize DCO
-		    UCS_initFLLSettle(
-		              UCS_BASE,
-		              12000,
-		              366
-		              );
+	//Set Ratio and Desired MCLK Frequency  and initialize DCO
+	UCS_initFLLSettle(
+			  UCS_BASE,
+			  12000,
+			  366
+			  );
 
 }
 //******************************************************************************
