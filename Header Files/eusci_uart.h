@@ -162,7 +162,7 @@
 //*****************************************************************************
 typedef enum
 {
-  uartA0=0,uartA1,uartA2
+  UARTA0=0,UARTA1,UARTA2
 }UartId_e;
 
 typedef enum
