@@ -44,6 +44,35 @@
 #include "deprecated/CCS/msp430xgeneric.h"
 #endif
 
+//*************************UART A1 ISR **************************************//
+#pragma vector=USCI_A1_VECTOR
+__interrupt void USCI_A1_ISR (void)
+{
+    switch (__even_in_range(UCA1IV, 4))
+	{
+	case USCI_UART_UCTXIFG:
+	{
+		EUSCI_UART_disableInterrupt (EUSCI_A1_BASE,
+		EUSCI_UART_TRANSMIT_INTERRUPT);
+		if(word_count != 0)
+		{
+			EUSCI_UART_enableInterrupt(EUSCI_A1_BASE,EUSCI_UART_RECEIVE_INTERRUPT);
+			word_count--;
+		}
+		break;
+	}
+	case USCI_UART_UCRXIFG:
+	{
+		EUSCI_UART_disableInterrupt (EUSCI_A1_BASE,
+			        EUSCI_UART_RECEIVE_INTERRUPT);
+			EUSCI_UART_enableInterrupt(EUSCI_A1_BASE,EUSCI_UART_TRANSMIT_INTERRUPT);
+			UCA1TXBUF = UCA1RXBUF;
+		break;
+	}
+
+	default: break;
+	}
+}
 //*****************************************************************************
 //
 //! Initializes the UART block.
@@ -791,7 +820,7 @@ void EUSCI_UART_selectDeglitchTime(unsigned int baseAddress,
 void Uart_Init(UartId_e uartx,long int BAUD_RATE)
 {
 
-	if(uartx==uartA0)
+	if(uartx==UARTA0)
 	{
 
 	//P1.2,3 = USCI_A0 TXD/RXD
@@ -821,7 +850,7 @@ void Uart_Init(UartId_e uartx,long int BAUD_RATE)
 	//Enable UART module for operation
 	EUSCI_UART_enable(EUSCI_A0_BASE);
 	}
-	else if(uartx==uartA1)
+	else if(uartx==UARTA1)
 	{
 
 		//P1.4,5 = USCI_A1 TXD/RXD
@@ -890,13 +919,13 @@ void Uart_Init(UartId_e uartx,long int BAUD_RATE)
 **********************************************************************/
 void WriteDataUart(UartId_e uartx,char Data)
 {
-	if(uartx==uartA0)
+	if(uartx==UARTA0)
 	{
 		while (!EUSCI_UART_getInterruptStatus(EUSCI_A0_BASE,
 						        EUSCI_UART_TRANSMIT_INTERRUPT_FLAG)) ;
 		EUSCI_UART_transmitData(EUSCI_A0_BASE,Data);
 	}
-	else if(uartx==uartA1)
+	else if(uartx==UARTA1)
 	{
 		while (!EUSCI_UART_getInterruptStatus(EUSCI_A1_BASE,
 				                EUSCI_UART_TRANSMIT_INTERRUPT_FLAG)) ;
@@ -931,13 +960,13 @@ void WriteDataStringUart(UartId_e uartx,char *String)
 ***************************************************************************/
 char ReadDataUart(UartId_e uartx)
 {
-	if(uartx==uartA0)
+	if(uartx==UARTA0)
 	{
 		while (!EUSCI_UART_getInterruptStatus(EUSCI_A0_BASE,
 		                       EUSCI_UART_RECEIVE_INTERRUPT_FLAG)) ;
 		return(EUSCI_UART_receiveData(EUSCI_A0_BASE));
 	}
-	else if(uartx==uartA1)
+	else if(uartx==UARTA1)
 	{
 		while (!EUSCI_UART_getInterruptStatus(EUSCI_A1_BASE,
 				               EUSCI_UART_RECEIVE_INTERRUPT_FLAG)) ;
@@ -950,6 +979,7 @@ char ReadDataUart(UartId_e uartx)
 	    return(EUSCI_UART_receiveData(EUSCI_A2_BASE));
 	}
 }
+
 //*****************************************************************************
 //
 //Close the Doxygen group.
