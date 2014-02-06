@@ -42,6 +42,15 @@
 
 //*****************************************************************************
 //
+//The following are values that can be used for getche() function
+//
+//*****************************************************************************
+#define ENTER_KEY 0x0D
+#define BACKSPACE_KEY 0x08
+#define ESC_KEY 0x1B
+#define BELL_KEY 0x07
+//*****************************************************************************
+//
 //The following are values that can be passed to the EUSCI_UART_init() API
 //as the parity parameter.
 //
@@ -249,4 +258,8 @@ extern void Uart_Init(UartId_e uartx,long int BAUD_RATE);
 extern void WriteDataUart(UartId_e uartx,char Data);
 extern void WriteDataStringUart(UartId_e uartx,char *String);
 extern char ReadDataUart(UartId_e uartx);
+extern char printf(char *format, ...);
+extern int getche();
+extern char getline(char s[],unsigned int length);
+extern unsigned int UART_Recieve();
 #endif

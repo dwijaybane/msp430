@@ -42,26 +42,15 @@
 #define HWREGB(x)                                                             \
         (*((volatile unsigned char *)(x)))
 
-/* Public Macros -------------------------------------------------------------- */
-/** @defgroup MSP430_hw_types_Public_Macros  MSP430_hw_types Public Macros
+/** @defgroup MSP430_Types_Macros MSP430_Types_Macros
+ * @ingroup MSP430_Drivers_Library
  * @{
  */
 
-/* _SBF(f,v) sets the bit field starting at position "f" to value "v".
- * _SBF(f,v) is intended to be used in "OR" and "AND" expressions:
- * e.g., "((_SBF(5,7) | _SBF(12,0xF)) & 0xFFFF)"
+/* Public Macros -------------------------------------------------------------- */
+/** @defgroup MSP430_Types_Macros_Macros MSP430_Types_Macros Macros
+ * @{
  */
-#undef _SBF
-/* Set bit field macro */
-#define _SBF(f,v) (v<<f)
-
-/* _BIT(n) sets the bit at position "n"
- * _BIT(n) is intended to be used in "OR" and "AND" expressions:
- * e.g., "(_BIT(3) | _BIT(7))".
- */
-#undef _BIT
-/* Set bit macro */
-#define _BIT(n)	(1<<n)
 
 //*****************************************************************************
 //
@@ -81,7 +70,38 @@
 #define TIMER_2	2
 #define TIMER_3	3
 
+/* _SBF(f,v) sets the bit field starting at position "f" to value "v".
+ * _SBF(f,v) is intended to be used in "OR" and "AND" expressions:
+ * e.g., "((_SBF(5,7) | _SBF(12,0xF)) & 0xFFFF)"
+ */
+#undef _SBF
+/* Set bit field macro */
+#define _SBF(f,v) (v<<f)
+
+/* _BIT(n) sets the bit at position "n"
+ * _BIT(n) is intended to be used in "OR" and "AND" expressions:
+ * e.g., "(_BIT(3) | _BIT(7))".
+ */
+#undef _BIT
+/* Set bit macro */
+#define _BIT(n)	(1<<n)
+/**
+ * @}
+ */
+
+/* Public Types --------------------------------------------------------------- */
+/** @defgroup MSP430_Types_Macros_Types MSP430_Types_Macros Types
+ * @{
+ */
+
+
 /**
  * @}
  */
 #endif // #ifndef __HW_TYPES__
+
+/**
+ * @}
+ */
+
+/* --------------------------------- End Of File ------------------------------ */
