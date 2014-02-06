@@ -18,7 +18,11 @@
 
 unsigned int hrt_bt_timer = 100;			// Initialized for 1 ms.
 unsigned int delay_timer = 0;
-unsigned int word_count = 9;
+char String[10];
+unsigned int p;
+unsigned int word_count = 0;
+unsigned int Esc_Flag = 0;
+unsigned int r_flag = 0;
 
 /**
  * @}
