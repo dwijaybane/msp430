@@ -48,28 +48,30 @@
 #pragma vector=USCI_A1_VECTOR
 __interrupt void USCI_A1_ISR (void)
 {
+	unsigned int get_che_status;
     switch (__even_in_range(UCA1IV, 4))
 	{
 	case USCI_UART_UCTXIFG:
 	{
-		EUSCI_UART_disableInterrupt (EUSCI_A1_BASE,
-		EUSCI_UART_TRANSMIT_INTERRUPT);
-		if(word_count != 0)
-		{
+		/*EUSCI_UART_disableInterrupt (EUSCI_A1_BASE,
+		EUSCI_UART_TRANSMIT_INTERRUPT);*/
+
+		//if(word_count != 0)
+		//{
 			EUSCI_UART_enableInterrupt(EUSCI_A1_BASE,EUSCI_UART_RECEIVE_INTERRUPT);
-			word_count--;
-		}
+			//word_count--;
+		//}
 		break;
 	}
 	case USCI_UART_UCRXIFG:
 	{
-		EUSCI_UART_disableInterrupt (EUSCI_A1_BASE,
-			        EUSCI_UART_RECEIVE_INTERRUPT);
+		r_flag = 1;
+		/*EUSCI_UART_disableInterrupt (EUSCI_A1_BASE,
+			        EUSCI_UART_RECEIVE_INTERRUPT);*/
 			EUSCI_UART_enableInterrupt(EUSCI_A1_BASE,EUSCI_UART_TRANSMIT_INTERRUPT);
-			UCA1TXBUF = UCA1RXBUF;
+
 		break;
 	}
-
 	default: break;
 	}
 }
@@ -980,6 +982,209 @@ char ReadDataUart(UartId_e uartx)
 	}
 }
 
+char printf(char *format, ...)
+{
+	char hex[]= "0123456789ABCDEF";
+	unsigned int width_dec[10] = { 1, 10, 100, 1000,10000};
+	unsigned int width_hex[10] = { 0x1, 0x10, 0x100, 0x1000};
+	unsigned int temp;
+
+	char format_flag, fill_char;
+	unsigned long u_val, div_val;
+	unsigned int base;
+
+	char *ptr;
+	va_list ap;
+	va_start(ap, format);
+
+	for(;;)
+	{
+		while((format_flag = *format++) != '%')      /* until full format string read */
+		{
+			if(!format_flag)
+			{                        /* until '%' or '\0' */
+				return(0);
+			}
+			UCA1TXBUF = format_flag;
+			Delay_Ms(100);
+		}
+
+		switch(format_flag = *format++)
+		{
+			case 'c':
+				format_flag = va_arg(ap,int);
+				UCA1TXBUF = format_flag;
+				Delay_Ms(100);
+
+				continue;
+
+			default:
+				UCA1TXBUF = format_flag;
+				Delay_Ms(100);
+
+        		continue;
+
+			case 'b':
+				format_flag = va_arg(ap,int);
+				UCA1TXBUF = (hex[(unsigned int)format_flag >> 4]);
+				Delay_Ms(100);
+				UCA1TXBUF = (hex[(unsigned int)format_flag & 0x0F]);
+				Delay_Ms(100);
+
+				continue;
+
+			case 's':
+				ptr = va_arg(ap,char *);
+				while(*ptr)
+				{
+					UCA1TXBUF = (*ptr++);
+					Delay_Ms(100);
+				}
+
+				continue;
+
+			case 'd':
+				base = 10;
+				if(*format == ' ')
+				{
+					format_flag = 0;
+					//*format++;
+				}
+				else
+				{
+					fill_char = *format++;
+					format_flag = ( *format++) - '1';
+
+				}
+				div_val = width_dec[format_flag];
+				u_val = va_arg(ap,int);
+				if(((int)u_val) < 0)
+				{
+					u_val = - u_val;    /* applied to unsigned type, result still unsigned */
+					temp = '-';
+					UCA1TXBUF = temp;
+					Delay_Ms(100);
+				}
+
+				goto CONVER_LOOP;
+
+			case 'x':
+				base = 16;
+				if(*format == ' ')
+				{
+					format_flag = 0;
+					//*format++;
+				}
+				else
+				{
+					fill_char = *format++;
+					format_flag = ( *format++) - '1';
+
+				}
+				div_val = width_hex[format_flag];
+				u_val = va_arg(ap, int);
+
+
+CONVER_LOOP:
+				while(div_val > 1 && div_val > u_val)
+				{
+					div_val /= base;
+					UCA1TXBUF = fill_char;
+					Delay_Ms(100);
+				}
+
+				do
+				{
+					UCA1TXBUF = (hex[u_val/div_val]);
+					Delay_Ms(100);
+					u_val %= div_val;
+					div_val /= base;
+				}while(div_val);
+		}/* end of switch statement */
+	}
+	return(0);
+}
+
+int getche()
+{
+	unsigned int len;
+	while(1)
+	{
+		len = UART_Recieve();
+		/* Got some data */
+		while(len>0)
+		{
+			if (len == ENTER_KEY)
+			{
+				return(ENTER_KEY);
+			}
+			else if (len == BACKSPACE_KEY)
+			{
+				return(BACKSPACE_KEY);
+			}
+			else if(len == ESC_KEY)
+			{
+				Esc_Flag = 1;
+				return(ESC_KEY);
+			}
+			else if (len >= ' ' && len <= 0x7F )
+			{
+				return(len);
+			}
+		}
+	}
+}
+
+char getline(char s[],unsigned int length)
+{
+	unsigned int j = 0;
+	unsigned int getline_data;
+	while(1)
+	{
+		getline_data = getche();
+		if(j < length)
+		{
+			if(getline_data == BACKSPACE_KEY)
+			{
+				s[j] = BACKSPACE_KEY;
+				j++;
+				Delay_Ms(10);
+				s[j] = ' ';
+				j++;
+				Delay_Ms(10);
+				s[j] = BACKSPACE_KEY;
+				j++;
+			}
+			else if(getline_data == ENTER_KEY)
+			{
+				return j;
+			}
+			else if(getline_data >= ' ' && getline_data <= 0x7F)
+			{
+				s[j] = getline_data;
+				j++;
+			}
+		}
+		else
+		{
+			UCA1TXBUF = BELL_KEY;
+			if(getline_data == ENTER_KEY)
+			{
+				return j;
+			}
+			j++;
+		}
+	}
+}
+
+unsigned int UART_Recieve()
+{
+	while(r_flag != 1);
+	{
+		r_flag = 0;
+		return(UCA1RXBUF);
+	}
+}
 //*****************************************************************************
 //
 //Close the Doxygen group.
