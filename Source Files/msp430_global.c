@@ -23,7 +23,10 @@ unsigned int p;
 unsigned int word_count = 0;
 unsigned int Esc_Flag = 0;
 unsigned int r_flag = 0;
-
+unsigned int page_ctr = 0;
+unsigned int page_len = 0;
+unsigned int i2c_eeprom_add = 0;
+unsigned int pankil = 0;
 /**
  * @}
  */
