@@ -41,8 +41,30 @@
 #ifdef  __IAR_SYSTEMS_ICC__
 #include "deprecated/IAR/msp430xgeneric.h"
 #else
-#include "deprecated/CCS/msp430xgeneric.h"
+#include "msp430xgeneric.h"
 #endif
+
+//*************************UART A0 ISR **************************************//
+#pragma vector=USCI_A0_VECTOR
+__interrupt void USCI_A0_ISR (void)
+{
+	unsigned int get_che_status;
+    switch (__even_in_range(UCA0IV, 4))
+	{
+	case USCI_UART_UCTXIFG:
+	{
+		EUSCI_UART_enableInterrupt(EUSCI_A0_BASE,EUSCI_UART_RECEIVE_INTERRUPT);
+		break;
+	}
+	case USCI_UART_UCRXIFG:
+	{
+		r_flag = 1;
+		EUSCI_UART_enableInterrupt(EUSCI_A0_BASE,EUSCI_UART_TRANSMIT_INTERRUPT);
+		break;
+	}
+	default: break;
+	}
+}
 
 //*************************UART A1 ISR **************************************//
 #pragma vector=USCI_A1_VECTOR
@@ -53,23 +75,14 @@ __interrupt void USCI_A1_ISR (void)
 	{
 	case USCI_UART_UCTXIFG:
 	{
-		/*EUSCI_UART_disableInterrupt (EUSCI_A1_BASE,
-		EUSCI_UART_TRANSMIT_INTERRUPT);*/
-
-		//if(word_count != 0)
-		//{
-			EUSCI_UART_enableInterrupt(EUSCI_A1_BASE,EUSCI_UART_RECEIVE_INTERRUPT);
-			//word_count--;
-		//}
+		EUSCI_UART_enableInterrupt(EUSCI_A1_BASE,EUSCI_UART_RECEIVE_INTERRUPT);
 		break;
 	}
 	case USCI_UART_UCRXIFG:
 	{
 		r_flag = 1;
-		/*EUSCI_UART_disableInterrupt (EUSCI_A1_BASE,
-			        EUSCI_UART_RECEIVE_INTERRUPT);*/
-			EUSCI_UART_enableInterrupt(EUSCI_A1_BASE,EUSCI_UART_TRANSMIT_INTERRUPT);
-
+		uarta1_buffer[index++] = UCA1RXBUF;
+		EUSCI_UART_enableInterrupt(EUSCI_A1_BASE,EUSCI_UART_TRANSMIT_INTERRUPT);
 		break;
 	}
 	default: break;
@@ -821,7 +834,6 @@ void EUSCI_UART_selectDeglitchTime(unsigned int baseAddress,
 **********************************************************************/
 void Uart_Init(UartId_e uartx,long int BAUD_RATE)
 {
-
 	if(uartx==UARTA0)
 	{
 
@@ -851,6 +863,10 @@ void Uart_Init(UartId_e uartx,long int BAUD_RATE)
 	}
 	//Enable UART module for operation
 	EUSCI_UART_enable(EUSCI_A0_BASE);
+#ifdef INTERRUPT_MODE
+	EUSCI_UART_enableInterrupt(EUSCI_A0_BASE,EUSCI_UART_TRANSMIT_INTERRUPT);	// Enable UART Interrupts.
+	EUSCI_UART_enableInterrupt(EUSCI_A0_BASE,EUSCI_UART_RECEIVE_INTERRUPT);
+#endif
 	}
 	else if(uartx==UARTA1)
 	{
@@ -881,50 +897,24 @@ void Uart_Init(UartId_e uartx,long int BAUD_RATE)
 		}
 		//Enable UART module for operation
 		EUSCI_UART_enable(EUSCI_A1_BASE);
-	}
-	else
-	{
-
-		//P1.2,3 = USCI_A1 TXD/RXD
-		GPIO_setAsPeripheralModuleFunctionOutputPin(
-				GPIO_PORT_P2,
-				GPIO_PIN2
-				);
-
-		GPIO_setAsPeripheralModuleFunctionInputPin(
-				GPIO_PORT_P2,
-				GPIO_PIN3
-				);
-
-		//Initialize USCI UART module
-		if ( STATUS_FAIL == EUSCI_UART_init(EUSCI_A2_BASE,
-							 EUSCI_UART_CLOCKSOURCE_SMCLK,
-							 UCS_getSMCLK(UCS_BASE),
-							 BAUD_RATE,
-							 EUSCI_UART_NO_PARITY,
-							 EUSCI_UART_LSB_FIRST,
-							 EUSCI_UART_ONE_STOP_BIT,
-							 EUSCI_UART_MODE,
-							 EUSCI_UART_LOW_FREQUENCY_BAUDRATE_GENERATION ))
-		{
-			return;
-		}
-		//Enable UART module for operation
-		EUSCI_UART_enable(EUSCI_A2_BASE);
+#ifdef INTERRUPT_MODE
+	EUSCI_UART_enableInterrupt(EUSCI_A1_BASE,EUSCI_UART_TRANSMIT_INTERRUPT);	// Enable UART Interrupts.
+	EUSCI_UART_enableInterrupt(EUSCI_A1_BASE,EUSCI_UART_RECEIVE_INTERRUPT);
+#endif
 	}
 }
-
+#ifdef POLLING_MODE
 /*****************************************************************//**
 * @brief        		Write The Data to UART Port Selected.
 * @param[in]        	UART Module like uartA0,uartA1 AND Data.
 * @return           	None
 **********************************************************************/
-void WriteDataUart(UartId_e uartx,char Data)
+void UART_Send(UartId_e uartx,char Data)
 {
 	if(uartx==UARTA0)
 	{
 		while (!EUSCI_UART_getInterruptStatus(EUSCI_A0_BASE,
-						        EUSCI_UART_TRANSMIT_INTERRUPT_FLAG)) ;
+						        EUSCI_UART_TRANSMIT_INTERRUPT_FLAG));
 		EUSCI_UART_transmitData(EUSCI_A0_BASE,Data);
 	}
 	else if(uartx==UARTA1)
@@ -940,6 +930,173 @@ void WriteDataUart(UartId_e uartx,char Data)
 		EUSCI_UART_transmitData(EUSCI_A2_BASE,Data);
 	}
 }
+
+unsigned int UART_Recieve(UartId_e uartx,char *data,int length,TRANSFER_BLOCK_Type uartm)
+{
+	unsigned int i;
+	if(uartx==UARTA0)
+	{
+		for(i=0;i<length;i++)
+		{
+			while (!EUSCI_UART_getInterruptStatus(EUSCI_A0_BASE,
+										   EUSCI_UART_RECEIVE_INTERRUPT_FLAG)) ;
+			data[i] = UCA0RXBUF;
+		}
+	}
+	else if(uartx==UARTA1)
+	{
+		if(uartm == BLOCKING)
+		{
+			for(i=0;i<length;i++)
+			{
+				while (!EUSCI_UART_getInterruptStatus(EUSCI_A1_BASE,
+											   EUSCI_UART_RECEIVE_INTERRUPT_FLAG)) ;
+				data[i] = UCA1RXBUF;
+			}
+		}
+		else if(uartm == NONE_BLOCKING)
+		{
+			for(i=0;i<length;i++)
+			{
+				if(!EUSCI_UART_getInterruptStatus(EUSCI_A1_BASE,
+											   EUSCI_UART_RECEIVE_INTERRUPT_FLAG))
+				{
+					data[i] = 0x00;
+				}
+				else
+				{
+					data[i] = UCA0RXBUF;
+				}
+			}
+		}
+		else if(uartm == TIME_BLOCKING)
+		{
+			unsigned long int time = 1250000;
+			for(i=0;i<length;i++)
+			{
+				while(!EUSCI_UART_getInterruptStatus(EUSCI_A1_BASE,
+											   EUSCI_UART_RECEIVE_INTERRUPT_FLAG))
+				{
+					time--;
+					if(time == 0)
+					{
+						data[i] = 0x00;
+					}
+				}
+			}
+			data[i] = UCA0RXBUF;
+		}
+	}
+}
+#endif
+
+#ifdef INTERRUPT_MODE
+/*****************************************************************//**
+* @brief        		Write The Data to UART Port Selected.
+* @param[in]        	UART Module like uartA0,uartA1 AND Data.
+* @return           	None
+**********************************************************************/
+void UART_Send(UartId_e uartx,char Data)
+{
+	if(uartx==UARTA0)
+	{
+		EUSCI_UART_transmitData(EUSCI_A0_BASE,Data);
+	}
+	else if(uartx==UARTA1)
+	{
+		EUSCI_UART_transmitData(EUSCI_A1_BASE,Data);
+	}
+}
+
+unsigned int UART_Recieve(UartId_e uartx,unsigned char *data,int length)
+{
+	if(uartx == UARTA0)
+	{
+		while(r_flag == 0);
+
+			unsigned int i;
+			for(i=0;i<index;i++)
+			{
+				data[i] = uarta1_buffer[i];
+				if(length == (index))
+				{
+					index = 0;
+				}
+			}
+			r_flag = 0;
+			return(i);
+
+
+	}
+	else
+	{
+		if(uartm == BLOCKING)
+		{
+			while(r_flag == 0);
+
+			unsigned int i;
+			for(i=0;i<index;i++)
+			{
+				data[i] = uarta1_buffer[i];
+				if(length == (index))
+				{
+					index = 0;
+				}
+			}
+			r_flag = 0;
+			return(i);
+		}
+		else if(uartm == NONE_BLOCKING)
+		{
+			if(r_flag == 0)
+			{
+				data[i] = 0x00;
+			}
+			else
+			{
+				unsigned int i;
+				for(i=0;i<index;i++)
+				{
+					data[i] = uarta1_buffer[i];
+					if(length == (index))
+					{
+						index = 0;
+					}
+				}
+				r_flag = 0;
+			}
+			return(i);
+		}
+		else if(uartm == TIME_BLOCKING)
+		{
+			unsigned int time = 50000;
+			if(r_flag == 0)
+			{
+				time--;
+				if(time == 0)
+				{
+					data[i] = 0x00;
+				}
+			}
+			else
+			{
+				unsigned int i;
+				for(i=0;i<index;i++)
+				{
+					data[i] = uarta1_buffer[i];
+					if(length == (index))
+					{
+						index = 0;
+					}
+				}
+				r_flag = 0;
+			}
+			return(i);
+		}
+	}
+
+}
+#endif
 
 /*****************************************************************//**
 * @brief        		Write The String of Data to UART Port Selected.
@@ -982,14 +1139,14 @@ char ReadDataUart(UartId_e uartx)
 	}
 }
 
-char printf(char *format, ...)
+char printf(UartId_e uartx,char *format, ...)
 {
 	char hex[]= "0123456789ABCDEF";
 	unsigned int width_dec[10] = { 1, 10, 100, 1000,10000};
 	unsigned int width_hex[10] = { 0x1, 0x10, 0x100, 0x1000};
 	unsigned int temp;
 
-	char format_flag, fill_char;
+	char format_flag, fill_char,temp_data;
 	unsigned long u_val, div_val;
 	unsigned int base;
 
@@ -1005,31 +1162,32 @@ char printf(char *format, ...)
 			{                        /* until '%' or '\0' */
 				return(0);
 			}
-			UCA1TXBUF = format_flag;
-			Delay_Ms(100);
+			UART_Send(uartx,format_flag);
+			Delay_Ms(2);
 		}
-
 		switch(format_flag = *format++)
 		{
 			case 'c':
 				format_flag = va_arg(ap,int);
-				UCA1TXBUF = format_flag;
-				Delay_Ms(100);
+				UART_Send(uartx,format_flag);
+				Delay_Ms(2);
 
 				continue;
 
 			default:
-				UCA1TXBUF = format_flag;
-				Delay_Ms(100);
+				UART_Send(uartx,format_flag);
+				Delay_Ms(2);
 
-        		continue;
+				continue;
 
 			case 'b':
 				format_flag = va_arg(ap,int);
-				UCA1TXBUF = (hex[(unsigned int)format_flag >> 4]);
-				Delay_Ms(100);
-				UCA1TXBUF = (hex[(unsigned int)format_flag & 0x0F]);
-				Delay_Ms(100);
+				temp_data = (hex[(unsigned int)format_flag >> 4]);
+				UART_Send(uartx,temp_data);
+				Delay_Ms(2);
+				temp_data = (hex[(unsigned int)format_flag & 0x0F]);
+				UART_Send(uartx,temp_data);
+				Delay_Ms(2);
 
 				continue;
 
@@ -1037,8 +1195,9 @@ char printf(char *format, ...)
 				ptr = va_arg(ap,char *);
 				while(*ptr)
 				{
-					UCA1TXBUF = (*ptr++);
-					Delay_Ms(100);
+					temp_data = (*ptr++);
+					UART_Send(uartx,temp_data);
+					Delay_Ms(2);
 				}
 
 				continue;
@@ -1062,8 +1221,8 @@ char printf(char *format, ...)
 				{
 					u_val = - u_val;    /* applied to unsigned type, result still unsigned */
 					temp = '-';
-					UCA1TXBUF = temp;
-					Delay_Ms(100);
+					UART_Send(uartx,temp);
+					Delay_Ms(2);
 				}
 
 				goto CONVER_LOOP;
@@ -1089,59 +1248,59 @@ CONVER_LOOP:
 				while(div_val > 1 && div_val > u_val)
 				{
 					div_val /= base;
-					UCA1TXBUF = fill_char;
-					Delay_Ms(100);
+					UART_Send(uartx,fill_char);
+					Delay_Ms(2);
 				}
 
 				do
 				{
-					UCA1TXBUF = (hex[u_val/div_val]);
-					Delay_Ms(100);
+					temp_data = (hex[u_val/div_val]);
+					UART_Send(uartx,temp_data);
+					Delay_Ms(2);
 					u_val %= div_val;
 					div_val /= base;
 				}while(div_val);
-		}/* end of switch statement */
-	}
-	return(0);
+			}/* end of switch statement */
+		}
+		return(0);
 }
 
-int getche()
+int getche(UartId_e uartx,TRANSFER_BLOCK_Type uartm)
 {
-	unsigned int len;
+	unsigned char len[1]={0};
 	while(1)
 	{
-		len = UART_Recieve();
-		/* Got some data */
-		while(len>0)
+		UART_Recieve(uartx,len,1,uartm);
+		while(len[0]>0)
 		{
-			if (len == ENTER_KEY)
+			if (len[0] == ENTER_KEY)
 			{
 				return(ENTER_KEY);
 			}
-			else if (len == BACKSPACE_KEY)
+			else if (len[0] == BACKSPACE_KEY)
 			{
 				return(BACKSPACE_KEY);
 			}
-			else if(len == ESC_KEY)
+			else if(len[0] == ESC_KEY)
 			{
 				Esc_Flag = 1;
 				return(ESC_KEY);
 			}
-			else if (len >= ' ' && len <= 0x7F )
+			else if ((len[0] >= 0x20) && (len[0] <= 0x7F))
 			{
-				return(len);
+				return(len[0]);
 			}
 		}
 	}
 }
 
-char getline(char s[],unsigned int length)
+char getline(UartId_e uartx,char *s,unsigned int length,TRANSFER_BLOCK_Type uartm)
 {
 	unsigned int j = 0;
 	unsigned int getline_data;
 	while(1)
 	{
-		getline_data = getche();
+		getline_data = getche(uartx,uartm);
 		if(j < length)
 		{
 			if(getline_data == BACKSPACE_KEY)
@@ -1159,7 +1318,7 @@ char getline(char s[],unsigned int length)
 			{
 				return j;
 			}
-			else if(getline_data >= ' ' && getline_data <= 0x7F)
+			else if((getline_data >= ' ') && (getline_data <= 0x7F))
 			{
 				s[j] = getline_data;
 				j++;
@@ -1167,7 +1326,7 @@ char getline(char s[],unsigned int length)
 		}
 		else
 		{
-			UCA1TXBUF = BELL_KEY;
+			UART_Send(uartx,BELL_KEY);
 			if(getline_data == ENTER_KEY)
 			{
 				return j;
@@ -1177,14 +1336,6 @@ char getline(char s[],unsigned int length)
 	}
 }
 
-unsigned int UART_Recieve()
-{
-	while(r_flag != 1);
-	{
-		r_flag = 0;
-		return(UCA1RXBUF);
-	}
-}
 //*****************************************************************************
 //
 //Close the Doxygen group.
