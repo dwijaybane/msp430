@@ -40,6 +40,34 @@
 //*****************************************************************************
 #define __MSP430_HAS_EUSCI_Ax__
 
+#ifndef ENABLE
+#define	ENABLE		1
+#endif
+#ifndef DISABLE
+#define DISABLE		0
+#endif
+
+/******************************************************************************/
+/*                       UART Mode                                            */
+/******************************************************************************/
+#define 	POLLING_SEL       ENABLE			// Specify the type of interface
+#define 	INTERRUPT_SEL     DISABLE
+
+/******************************************************************************/
+/*                       UART Mode validation                                 */
+/******************************************************************************/
+#if (POLLING_SEL == INTERRUPT_SEL)
+	#error uart mode not correctly defined
+#endif
+
+#if POLLING_SEL
+	#define POLLING_MODE
+#elif INTERRUPT_SEL
+	#define INTERRUPT_MODE
+#else
+	#error Uart Mode not defined
+#endif
+
 //*****************************************************************************
 //
 //The following are values that can be used for getche() function
@@ -180,6 +208,13 @@ typedef enum
   RXInt
 }IntType_e;
 
+typedef enum
+{
+	NONE_BLOCKING = 0,		/**< None Blocking type */
+	TIME_BLOCKING,			/**< Time Blocking type*/
+	BLOCKING				/**< Blocking type */
+}TRANSFER_BLOCK_Type;
+
 //*****************************************************************************
 //
 //Prototypes for the APIs.
@@ -255,11 +290,21 @@ void EUSCI_UART_selectDeglitchTime(unsigned int baseAddress,
 			unsigned long deglitchTime
 			);
 extern void Uart_Init(UartId_e uartx,long int BAUD_RATE);
-extern void WriteDataUart(UartId_e uartx,char Data);
+
+#ifdef INTERRUPT_MODE
+extern void UART_Send(UartId_e uartx,char Data,TRANSFER_BLOCK_Type uartm);
+extern unsigned int UART_Recieve(UartId_e uartx,unsigned char *data,int length,TRANSFER_BLOCK_Type uartm);
+#endif
+
+#ifdef POLLING_MODE
+extern void UART_Send(UartId_e uartx,char Data);
+extern unsigned int UART_Recieve(UartId_e uartx,char *data,int length,TRANSFER_BLOCK_Type uartm);
+#endif
+
 extern void WriteDataStringUart(UartId_e uartx,char *String);
 extern char ReadDataUart(UartId_e uartx);
-extern char printf(char *format, ...);
-extern int getche();
-extern char getline(char s[],unsigned int length);
-extern unsigned int UART_Recieve();
+extern char printf(UartId_e uartx,char *format, ...);
+extern int getche(UartId_e uartx,TRANSFER_BLOCK_Type uartm);
+extern char getline(UartId_e uartx,char *s,unsigned int length,TRANSFER_BLOCK_Type uartm);
+
 #endif
