@@ -34,13 +34,13 @@
 //EUSCI_I2C_.c - Driver for the I2C Module.
 //
 //*****************************************************************************
-#include "inc/hw_types.h"
+#include "hw_types.h"
 #include "debug.h"
 #include "eusci_i2c.h"
 #ifdef  __IAR_SYSTEMS_ICC__
 #include "deprecated/IAR/msp430xgeneric.h"
 #else
-#include "deprecated/CCS/msp430xgeneric.h"
+#include "msp430xgeneric.h"
 #endif
 
 //*****************************************************************************
@@ -1274,6 +1274,11 @@ unsigned long EUSCI_I2C_getTransmitBufferAddressForDMA (unsigned int baseAddress
     return ( baseAddress + OFS_UCBxTXBUF );
 }
 
+/*****************************************************************//**
+* @brief        		Initialize SPI Module.
+* @param[in]        	NONE.
+* @return           	None
+**********************************************************************/
 void I2C_Init()
 {
 	// Set P2.0 and P2.1 as I2C Peripheral pins
@@ -1300,6 +1305,11 @@ void I2C_Init()
    EUSCI_I2C_enable(EUSCI_B0_BASE);
 }
 
+/*******************************************************************************//**
+* @brief        		Write single byte Data to I2C EEPROM at definite address.
+* @param[in]        	Start Address , Data.
+* @return           	NONE.
+***********************************************************************************/
 void WriteDataI2C(unsigned int address, unsigned char data)
 {
 	 EUSCI_I2C_setMode(EUSCI_B0_BASE, EUSCI_I2C_TRANSMIT_MODE);
@@ -1312,6 +1322,11 @@ void WriteDataI2C(unsigned int address, unsigned char data)
 
 }
 
+/*******************************************************************************//**
+* @brief        		Read single byte Data from I2C EEPROM from definite address.
+* @param[in]        	Start Address.
+* @return           	Read character will be returned to char variable.
+***********************************************************************************/
 unsigned char ReadDataI2C(unsigned int address)
 {
 
@@ -1330,18 +1345,23 @@ unsigned char ReadDataI2C(unsigned int address)
     return EUSCI_I2C_masterSingleReceive(EUSCI_B0_BASE);
 }
 
+/*******************************************************************************//**
+* @brief        		Write String of Data from I2C EEPROM to definite address.
+* @param[in]        	Start Address , Char Array of data.
+* @return           	NONE.
+***********************************************************************************/
 void WriteDataStringI2C(unsigned int address, unsigned char data[])
 {
 				unsigned int i = 0;
 				EUSCI_I2C_setMode(EUSCI_B0_BASE, EUSCI_I2C_TRANSMIT_MODE);
 				EUSCI_I2C_masterMultiByteSendStart(EUSCI_B0_BASE,(address>>8));
-			//	Delay_Ms(1);
+
 				EUSCI_I2C_masterMultiByteSendNext(EUSCI_B0_BASE,(address & 0xFF));
-			//	Delay_Ms(1);
+
 				do
 				{
 				EUSCI_I2C_masterMultiByteSendNext(EUSCI_B0_BASE,data[pankil]);
-			//	Delay_Ms(1);
+
 				i++;
 				pankil++;
 				i2c_eeprom_add++;
@@ -1352,10 +1372,13 @@ void WriteDataStringI2C(unsigned int address, unsigned char data[])
 				}while (data[pankil] != '\0');
 				pankil = 0;
 PAGE_END:		EUSCI_I2C_masterMultiByteSendFinish(EUSCI_B0_BASE,data[pankil]);
-				//i2c_eeprom_add = i2c_eeprom_add + pankil;
-			//	Delay_Ms(1);
 }
 
+/*******************************************************************************//**
+* @brief        		Read String of Data from I2C EEPROM from definite address.
+* @param[in]        	Start Address , Char Array , Length.
+* @return           	NONE.
+***********************************************************************************/
 void ReadDataStringI2C(unsigned int address, unsigned char*rxd, unsigned int length)
 {
 
@@ -1376,9 +1399,13 @@ void ReadDataStringI2C(unsigned int address, unsigned char*rxd, unsigned int len
     }
     *rxd='\0';
     EUSCI_I2C_masterMultiByteReceiveStop(EUSCI_B0_BASE);
-
 }
 
+/************************************************************************//**
+* @brief        		Display I2C EEPROM Data on UART Port Selected.
+* @param[in]        	Start Address , End Address.
+* @return           	NONE.
+****************************************************************************/
 void Display_I2C_Data(unsigned int start_add,unsigned int end_add)
 {
 	unsigned char RXData[270];
@@ -1386,40 +1413,56 @@ void Display_I2C_Data(unsigned int start_add,unsigned int end_add)
 	unsigned int page;
 	unsigned int page_req = 'N';
 
-	while(end_add > start_add)
+	while(end_add >= start_add)
 	{
 		while(page_req != 'N');
 		{
+			printf(UARTA1,"\x1b[2J");
 			ReadDataStringI2C(start_add,RXData,256);						// Reading Data From EEPROM
 			for(i=0;i<256;i++)
 			{
-				if(end_add > start_add)
+				if(end_add >= start_add)
 				{
 					if(i%16 == 0)
 					{
-						printf("\n\r");
-						printf("%x04\t",start_add);
+						printf(UARTA1,"\n\r");
+						printf(UARTA1,"%x04\t",start_add);
 					}
 				}
 				else
 				{
+					Print_Esc_Menu();
 					return;
 				}
-				printf("%x02  ",RXData[i]);
+				printf(UARTA1,"%x02  ",RXData[i]);
 				start_add++;
-				//Delay_Ms(1);
 			}
 			page_req = 0;
-			if(end_add > start_add)
+			if(end_add >= start_add)
 			{
-				printf("\n\rCurrent Page Displayed Correctly\n\rPress N for Next Page\n\r");
-				page_req = getche();
-				printf("\x1b[2J");
+				printf(UARTA1,"\n\rCurrent Page Displayed Correctly\n\rPress N for Next Page\n\rPRESS ESC. KEY TO BACK TO PREVIOUS MENU");
+again:			page_req = getche(UARTA1,BLOCKING);
+				if(page_req == ESC_KEY)
+				{
+					return;
+				}
+				else if(page_req != 'N' && page_req != ESC_KEY)
+				{
+					printf(UARTA1,"\n\rPlease Enter Valid Input\n\rPress N for Next Page\n\rPRESS ESC. KEY TO BACK TO PREVIOUS MENU");
+					goto again;
+				}
+
 				start_add++;
 			}
 		}
 	}
 }
+
+/**********************************************************************//**
+* @brief        		Compare String given as Input.
+* @param[in]        	Two Strings that needs to be compared.
+* @return           	Return 1 if string matched and 0 if not matched.
+**************************************************************************/
 int my_strCmp (unsigned char *s,unsigned char *t)
 {
 	while (*t!='\0')

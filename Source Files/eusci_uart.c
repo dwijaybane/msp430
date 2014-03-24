@@ -988,6 +988,21 @@ unsigned int UART_Recieve(UartId_e uartx,char *data,int length,TRANSFER_BLOCK_Ty
 		}
 	}
 }
+
+/*****************************************************************//**
+* @brief        		Write The String of Data to UART Port Selected.
+* @param[in]        	UART Module like uartA0,uartA1 AND String of Data.
+* @return           	None
+**********************************************************************/
+void WriteDataStringUart(UartId_e uartx,char *String)
+{
+    int i = 0;
+	while (String[i] != 0)
+	{
+		UART_Send(uartx,String[i]);
+		i++;
+	}
+}
 #endif
 
 #ifdef INTERRUPT_MODE
@@ -1008,8 +1023,9 @@ void UART_Send(UartId_e uartx,char Data)
 	}
 }
 
-unsigned int UART_Recieve(UartId_e uartx,unsigned char *data,int length)
+unsigned int UART_Recieve(UartId_e uartx,unsigned char *data,int length,TRANSFER_BLOCK_Type uartm)
 {
+	unsigned int i;
 	if(uartx == UARTA0)
 	{
 		while(r_flag == 0);
@@ -1096,7 +1112,6 @@ unsigned int UART_Recieve(UartId_e uartx,unsigned char *data,int length)
 	}
 
 }
-#endif
 
 /*****************************************************************//**
 * @brief        		Write The String of Data to UART Port Selected.
@@ -1108,10 +1123,13 @@ void WriteDataStringUart(UartId_e uartx,char *String)
     int i = 0;
 	while (String[i] != 0)
 	{
-		WriteDataUart(uartx,String[i]);
+		UART_Send(uartx,String[i]);
+		Delay_Ms(2);
 		i++;
 	}
 }
+#endif
+
 /**********************************************************************//**
 * @brief        		Read the single byte of Data from UART Port Selected.
 * @param[in]        	UART Module like uartA0,uartA1.
@@ -1139,6 +1157,11 @@ char ReadDataUart(UartId_e uartx)
 	}
 }
 
+/******************************************************************************//**
+* @brief        		Display the data of any format on UART Port Selected.
+* @param[in]        	UART Module (uartA0,uartA1) , Data you want to Display.
+* @return           	Data will be Displayed on Serial PORT TERMINAL .
+**********************************************************************************/
 char printf(UartId_e uartx,char *format, ...)
 {
 	char hex[]= "0123456789ABCDEF";
@@ -1237,12 +1260,11 @@ char printf(UartId_e uartx,char *format, ...)
 				else
 				{
 					fill_char = *format++;
-					format_flag = ( *format++) - '1';
-
+					format_flag = ( *format) - '1';
+					*format++;
 				}
 				div_val = width_hex[format_flag];
 				u_val = va_arg(ap, int);
-
 
 CONVER_LOOP:
 				while(div_val > 1 && div_val > u_val)
@@ -1265,6 +1287,11 @@ CONVER_LOOP:
 		return(0);
 }
 
+/******************************************************************************//**
+* @brief        		Take a Single character of data from UART Port Selected.
+* @param[in]        	UART Module(UARTA0,UARTA1) , TRANSFER BLOCK TYPE.
+* @return           	Received Data will be returned to an INT variable.
+**********************************************************************************/
 int getche(UartId_e uartx,TRANSFER_BLOCK_Type uartm)
 {
 	unsigned char len[1]={0};
@@ -1294,9 +1321,14 @@ int getche(UartId_e uartx,TRANSFER_BLOCK_Type uartm)
 	}
 }
 
+/***********************************************************************************************//**
+* @brief        		Take data of variable length from UART Port Selected.
+* @param[in]        	UART Module(UARTA0,UARTA1) , Character Array , LENGTH , TRANSFER BLOCK TYPE.
+* @return           	Received Data will be returned to character array.
+***************************************************************************************************/
 char getline(UartId_e uartx,char *s,unsigned int length,TRANSFER_BLOCK_Type uartm)
 {
-	unsigned int j = 0;
+	unsigned int j = 0,temp;
 	unsigned int getline_data;
 	while(1)
 	{
@@ -1305,14 +1337,13 @@ char getline(UartId_e uartx,char *s,unsigned int length,TRANSFER_BLOCK_Type uart
 		{
 			if(getline_data == BACKSPACE_KEY)
 			{
-				s[j] = BACKSPACE_KEY;
-				j++;
-				Delay_Ms(10);
-				s[j] = ' ';
-				j++;
-				Delay_Ms(10);
-				s[j] = BACKSPACE_KEY;
-				j++;
+				temp = BACKSPACE_KEY;
+				printf(UARTA1,"%c",temp);
+				temp = ' ';
+				printf(UARTA1,"%c",temp);
+				temp = BACKSPACE_KEY;
+				printf(UARTA1,"%c",temp);
+				j--;
 			}
 			else if(getline_data == ENTER_KEY)
 			{
@@ -1321,6 +1352,7 @@ char getline(UartId_e uartx,char *s,unsigned int length,TRANSFER_BLOCK_Type uart
 			else if((getline_data >= ' ') && (getline_data <= 0x7F))
 			{
 				s[j] = getline_data;
+				UART_Send(UARTA1,s[j]);
 				j++;
 			}
 		}
@@ -1336,6 +1368,166 @@ char getline(UartId_e uartx,char *s,unsigned int length,TRANSFER_BLOCK_Type uart
 	}
 }
 
+/***********************************************************************************************//**
+* @brief        		Take data of variable length of HEX format from UART Port Selected.
+* @param[in]        	UART Module(UARTA0,UARTA1) , Character Array , LENGTH , TRANSFER BLOCK TYPE.
+* @return           	Received Data will be returned in HEX format to character array.
+***************************************************************************************************/
+unsigned int getline_hex(UartId_e uartx,char s[10],unsigned int length,TRANSFER_BLOCK_Type uartm)
+{
+	unsigned char dummy[10]={0};
+	unsigned int j = 0,temp,str_ad=0,i,b=0,c=0,k;
+	unsigned int getline_data;
+	while(1)
+	{
+		getline_data = getche(uartx,uartm);
+		if(getline_data == BACKSPACE_KEY)
+		{
+			if(j>0)
+			{
+				temp = BACKSPACE_KEY;
+				printf(UARTA1,"%c",temp);
+				temp = ' ';
+				printf(UARTA1,"%c",temp);
+				temp = BACKSPACE_KEY;
+				printf(UARTA1,"%c",temp);
+				j--;
+			}
+			else
+			{
+				UART_Send(uartx,BELL_KEY);
+			}
+		}
+		else if(getline_data == ENTER_KEY)
+		{
+			if(j>(length-1))
+			{
+				for(i=0;i<length;i++)
+				{
+					dummy[i] = dummy[i] - 0x30;
+					if((dummy[i] >= 0x10) && (dummy[i] <= 0x15))
+					{
+						dummy[i] = dummy[i] - 6;
+					}
+				}
+				for(i=length;i>0;i--)
+				{
+					c = 1;
+					for(k=0;k<(i-1);k++)
+					{
+						b = 16;
+						c = c*b;
+					}
+					str_ad += (dummy[length-i]*c);
+				}
+				return str_ad;
+			}
+		}
+		else if((getline_data >= 0x30) && (getline_data <= 0x46))
+		{
+			if(j<length)
+			{
+				s[j] = getline_data;
+				UART_Send(UARTA1,s[j]);
+				if((s[j] >= 0x41) && (s[j] <= 0x46))
+				{
+					s[j] = s[j]-1;
+				}
+				dummy[j] = s[j];
+				j++;
+			}
+		}
+		else if(j>length)
+		{
+			UART_Send(uartx,BELL_KEY);
+			if(getline_data == ENTER_KEY)
+			{
+				return j;
+			}
+		}
+		else
+		{
+			UART_Send(uartx,BELL_KEY);
+		}
+	}
+}
+
+/***********************************************************************************************//**
+* @brief        		Take data of variable length of DECIMAL format from UART Port Selected.
+* @param[in]        	UART Module(UARTA0,UARTA1) , Character Array , LENGTH , TRANSFER BLOCK TYPE.
+* @return           	Received Data will be returned in DECIMAL format to character array.
+***************************************************************************************************/
+unsigned int getline_dec(UartId_e uartx,char s[10],unsigned int length,TRANSFER_BLOCK_Type uartm)
+{
+	unsigned char dummy[10]={0};
+	unsigned int j = 0,temp,str_ad=0,i,b=0,c=0,k;
+	unsigned int getline_data;
+	while(1)
+	{
+		getline_data = getche(uartx,uartm);
+		if(getline_data == BACKSPACE_KEY)
+		{
+			if(j>0)
+			{
+				temp = BACKSPACE_KEY;
+				printf(UARTA1,"%c",temp);
+				temp = ' ';
+				printf(UARTA1,"%c",temp);
+				temp = BACKSPACE_KEY;
+				printf(UARTA1,"%c",temp);
+				j--;
+			}
+			else
+			{
+				UART_Send(uartx,BELL_KEY);
+			}
+		}
+		else if(getline_data == ENTER_KEY)
+		{
+			if(j>(length-1))
+			{
+				for(i=0;i<length;i++)
+				{
+					dummy[i] = dummy[i] - 0x30;
+				}
+
+				for(i=length;i>0;i--)
+				{
+					c = 1;
+					for(k=0;k<(i-1);k++)
+					{
+						c = c*10;
+					}
+					b = (dummy[length-i]*c);
+					str_ad = str_ad + b;
+				}
+				return str_ad;
+			}
+		}
+		else if((getline_data >= 0x30) && (getline_data <= 0x46))
+		{
+			if(j<length)
+			{
+				s[j] = getline_data;
+				UART_Send(UARTA1,s[j]);
+				dummy[j] = s[j];
+				j++;
+			}
+		}
+		else if(j>length)
+		{
+			UART_Send(uartx,BELL_KEY);
+			if(getline_data == ENTER_KEY)
+			{
+				return j;
+			}
+		}
+		else
+		{
+			UART_Send(uartx,BELL_KEY);
+		}
+	}
+}
 //*****************************************************************************
 //
 //Close the Doxygen group.
