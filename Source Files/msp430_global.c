@@ -23,10 +23,25 @@ unsigned int p;
 unsigned int word_count = 0;
 unsigned int Esc_Flag = 0;
 unsigned int r_flag = 0;
+int RFID_data_status = 0;
+char RFID_data[14];
+char RFID_1[10] = {'4','E','0','0','F','0','F','5','5','1'};
+char RFID_2[10] = {'4','E','0','0','F','0','F','5','5','2'};
+char RFID_3[10] = {'4','E','0','0','F','0','F','5','5','3'};
+char RFID_4[10] = {'4','E','0','0','F','0','F','5','5','4'};
+unsigned int pressed=0;
+unsigned int p_conf=0;
+unsigned int r_conf=0;
+int Esc_flag = 0;
+char uarta1_buffer[100]={0};
+unsigned int index = 0;
 unsigned int page_ctr = 0;
 unsigned int page_len = 0;
 unsigned int i2c_eeprom_add = 0;
 unsigned int pankil = 0;
+char done = 0;
+
+char lcd[50];
 /**
  * @}
  */
