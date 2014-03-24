@@ -50,8 +50,8 @@
 /******************************************************************************/
 /*                       UART Mode                                            */
 /******************************************************************************/
-#define 	POLLING_SEL       ENABLE			// Specify the type of interface
-#define 	INTERRUPT_SEL     DISABLE
+#define 	POLLING_SEL       DISABLE			// Specify the type of interface
+#define 	INTERRUPT_SEL     ENABLE
 
 /******************************************************************************/
 /*                       UART Mode validation                                 */
@@ -292,19 +292,22 @@ void EUSCI_UART_selectDeglitchTime(unsigned int baseAddress,
 extern void Uart_Init(UartId_e uartx,long int BAUD_RATE);
 
 #ifdef INTERRUPT_MODE
-extern void UART_Send(UartId_e uartx,char Data,TRANSFER_BLOCK_Type uartm);
+extern void UART_Send(UartId_e uartx,char Data);
 extern unsigned int UART_Recieve(UartId_e uartx,unsigned char *data,int length,TRANSFER_BLOCK_Type uartm);
+extern void WriteDataStringUart(UartId_e uartx,char *String);
 #endif
 
 #ifdef POLLING_MODE
 extern void UART_Send(UartId_e uartx,char Data);
 extern unsigned int UART_Recieve(UartId_e uartx,char *data,int length,TRANSFER_BLOCK_Type uartm);
+extern void WriteDataStringUart(UartId_e uartx,char *String);
 #endif
 
-extern void WriteDataStringUart(UartId_e uartx,char *String);
 extern char ReadDataUart(UartId_e uartx);
 extern char printf(UartId_e uartx,char *format, ...);
 extern int getche(UartId_e uartx,TRANSFER_BLOCK_Type uartm);
 extern char getline(UartId_e uartx,char *s,unsigned int length,TRANSFER_BLOCK_Type uartm);
+extern unsigned int getline_hex(UartId_e uartx,char s[10],unsigned int length,TRANSFER_BLOCK_Type uartm);
+extern unsigned int getline_dec(UartId_e uartx,char s[10],unsigned int length,TRANSFER_BLOCK_Type uartm);
 
 #endif
